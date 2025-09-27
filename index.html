@@ -30,7 +30,7 @@
 |    :     |          :  :       \           |   | .\ :           .--. |  | :         |   :  :  | | 
 ;    |.';  ;          :  |   /\   \          .   : |: |         ,'_ /| :  . |         :   |   \ | : 
 `----'  |  |          |  :  ' ;.   :         |   |  \ :         |  ' | |  . .         |   : '  '; | 
-    '   :  ;          |  |  ;/  \   \        |   : .  /         |  | ' |  | |         '   ' ;.    ; 
+    '   :  ;          |  |  ;/  \   \        |   : |: |         |  | ' |  | |         '   ' ;.    ; 
     |   |  '          '  :  | \  \ ,'        ;   | |  \         :  | | :  ' ;         |   | | \   | 
     '   :  |          |  |  '  '--'          |   | ;\  \        |  ; ' |  | '         '   : |  ; .' 
     ;   |.'           |  :  :                :   ' | \.'        :  | : ;  ; |         |   | '`--'   
@@ -52,14 +52,18 @@
   </div>
 
 <script>
-/* Very small game logic (same simple flow as before).
-   Keeps the UI minimal: press Run Game, then type answers. */
+/* Modified so that when the player finds the chest they can press Enter (empty input)
+   or type "open" to open it — which will attempt to open the YouTube link.
+*/
+
 const output = document.getElementById('output');
 const inputArea = document.getElementById('inputArea');
 const userInput = document.getElementById('userInput');
 const startBtn = document.getElementById('start');
 
 let lives=2, score=0, step=0;
+let awaitingOpen = false;           // true when chest found and waiting for Enter/open
+const ytLink = 'https://www.youtube.com/watch?v=I2re2B-AkF8';
 
 function printLine(t=''){ output.textContent += t + '\n'; window.scrollTo(0,document.body.scrollHeight); }
 
@@ -68,7 +72,7 @@ function startGame(){
   startBtn.style.display = 'none';
   inputArea.style.display = 'block';
   userInput.focus();
-  lives = 2; score = 0; step = 1;
+  lives = 2; score = 0; step = 1; awaitingOpen = false;
   printLine('Welcome to THE LOST TREASURE QUEST');
   printLine('You have 2 lives. Type carefully!');
   printLine('');
@@ -76,10 +80,13 @@ function startGame(){
 }
 
 function submitInput(){
-  const v = userInput.value.trim().toLowerCase();
+  // read raw input (may be empty if player pressed Enter)
+  const raw = userInput.value;
+  const v = raw.trim().toLowerCase();
   userInput.value = '';
-  if(!v) return;
-  handleStep(v);
+  // Allow ENTER (empty string) only when we're awaiting the chest open action
+  if(!v && !awaitingOpen) return;
+  handleStep(v, raw);
 }
 
 function endGame(){
@@ -88,6 +95,7 @@ function endGame(){
   inputArea.style.display = 'none';
   startBtn.style.display = 'inline-block';
   startBtn.textContent = 'Play Again';
+  awaitingOpen = false;
 }
 
 function gameOver(msg='Game Over'){
@@ -96,7 +104,49 @@ function gameOver(msg='Game Over'){
   endGame();
 }
 
-function handleStep(val){
+function openTreasureWindow(){
+  // Try to open the YouTube link in a new tab/window via user action.
+  const win = window.open(ytLink, '_blank');
+  if(win){
+    printLine('\nThe treasure reveals a secret audio-visual scroll... (YouTube opened in a new tab).');
+  } else {
+    // Popup blocked — provide clickable fallback
+    printLine('\nPopup blocked by browser. Click the link below to view the treasure:');
+    printLine(ytLink);
+    printLine('[Click the link above or copy-paste it into your browser]');
+    // Optionally, create a visible anchor for convenience
+    const a = document.createElement('a');
+    a.href = ytLink;
+    a.target = '_blank';
+    a.textContent = 'Open Treasure (YouTube)';
+    a.className = 'link';
+    output.appendChild(a);
+    output.appendChild(document.createElement('br'));
+    window.scrollTo(0,document.body.scrollHeight);
+  }
+  awaitingOpen = false;
+}
+
+function handleStep(val, rawEntry){
+  // if we're awaiting the chest open, accept either "open" or ENTER (empty val)
+  if(awaitingOpen){
+    if(val === 'open' || rawEntry === '') {
+      // open the treasure: increment score, show message and attempt to open YouTube
+      score += 5;
+      printLine('You put your hand on the chest and lift the lid... 🎺');
+      printLine('Inside: A strange melody and a glowing reel. Score: ' + score);
+      openTreasureWindow();
+      return endGame();
+    }
+    // allow other commands while awaiting: share or inspect or cancel
+    if(val === 'share'){ score += 2; printLine('You shared the treasure. Score: '+score); awaitingOpen = false; return endGame(); }
+    if(val === 'inspect'){ printLine('Trap snapped! Chest sealed.'); awaitingOpen = false; return gameOver(); }
+    // unrecognized while awaiting: inform user and keep waiting
+    printLine('Type "open" or press Enter to open the chest, or "share"/"inspect".');
+    return;
+  }
+
+  // Normal game flow:
   if(step===1){
     if(val==='left'){ printLine('You slip through Mangrove Bay. Frogs croak...'); }
     else if(val==='right'){ printLine('You meet a pirate! He steals -1 point.'); score--; }
@@ -112,15 +162,31 @@ function handleStep(val){
   if(step===3){
     if(val==='red'){ lives--; return gameOver('Serpents attacked! -1 life.'); }
     if(val==='yellow'){ score--; return gameOver('Empty vault. -1 score.'); }
-    if(val==='blue'){ step=4; printLine('You find a chest! Type "open", "share" or "inspect".'); return; }
+    if(val==='blue'){ step=4; printLine('You find a chest!'); 
+        // Now prompt with special instruction: allow Enter or "open" to reveal chest contents
+        printLine('Type "open", press Enter, or type "share" or "inspect".');
+        awaitingOpen = true;
+        userInput.focus();
+        return;
+    }
     return gameOver('The island rejects you.');
   }
   if(step===4){
-    if(val==='open'){ score+=5; printLine('You found the TREASURE! Score: '+score); return endGame(); }
-    if(val==='share'){ score+=2; printLine('You shared the map. Score: '+score); return endGame(); }
-    if(val==='inspect'){ printLine('Trap snapped! Chest sealed.'); return gameOver(); }
+    // Won't normally reach here because awaitingOpen handles chest actions
+    printLine('You are at the chest. Type "open" to open it.');
+    awaitingOpen = true;
+    return;
   }
 }
+
+// convenience: pressing Enter in the input triggers submitInput()
+userInput.addEventListener('keydown', function(e){
+  if(e.key === 'Enter'){
+    e.preventDefault(); // prevent default form behavior
+    submitInput();
+  }
+});
+
 </script>
 </body>
 </html>
