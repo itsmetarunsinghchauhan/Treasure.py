@@ -1,0 +1,189 @@
+import time
+import random
+import webbrowser
+import sys
+
+# ---------- Config ----------
+TYPING_DELAY = 0.02
+EMOJI_TREASURE = "🪙"
+EMOJI_FIRE = "🔥"
+EMOJI_OOPS = "💥"
+# ANSI color helpers (works in most terminals)
+CYAN = "\033[96m"
+YELLOW = "\033[93m"
+GREEN = "\033[92m"
+MAGENTA = "\033[95m"
+RED = "\033[91m"
+RESET = "\033[0m"
+BOLD = "\033[1m"
+
+# ---------- Helpers ----------
+def type_print(text, delay=TYPING_DELAY):
+    for ch in text:
+        print(ch, end='', flush=True)
+        time.sleep(delay)
+    print()
+
+def slow_sleep(seconds):
+    time.sleep(seconds)
+
+def surprise_event():
+    # random small event to keep the player on their toes (treasure-themed)
+    events = [
+    ("A monkey grabs your map and runs—oh no! -1 score", -1),
+    ("You find a smudged map corner. Score +2!", +2),
+    ("A raccoon plays a trick and you lose a point. -1", -1),
+    ("You find a small cave and rest. +1 life", "life"),
+    ("You slip a little but it's OK. No change.", 0)
+]
+    event = random.choice(events)
+    return event
+
+# ---------- Game ----------
+def title_screen():
+    print("{}{}{}{}".format(BOLD, CYAN, """
+                                                                                             
+        ,-----,          
+      ,/   .`|                                                                                 ,--. 
+    ,`   .'  :           ,---,               ,-.----.                                        ,--.'| 
+  ;    ;     /          '  .' \              \    /  \                   ,--,            ,--,:  : | 
+.'___,/    ,'          /  ;    '.            ;   :    \                ,'_ /|         ,`--.'`|  ' : 
+|    :     |          :  :       \           |   | .\ :           .--. |  | :         |   :  :  | | 
+;    |.';  ;          :  |   /\   \          .   : |: |         ,'_ /| :  . |         :   |   \ | : 
+`----'  |  |          |  :  ' ;.   :         |   |  \ :         |  ' | |  . .         |   : '  '; | 
+    '   :  ;          |  |  ;/  \   \        |   : .  /         |  | ' |  | |         '   ' ;.    ; 
+    |   |  '          '  :  | \  \ ,'        ;   | |  \         :  | | :  ' ;         |   | | \   | 
+    '   :  |          |  |  '  '--'          |   | ;\  \        |  ; ' |  | '         '   : |  ; .' 
+    ;   |.'           |  :  :                :   ' | \.'        :  | : ;  ; |         |   | '`--'   
+    '---'             |  | ,'                :   : :-'          '  :  `--'   \        '   : |       
+                      `--''                  |   |.'            :  ,      .-./        ;   |.'       
+                                             `---'               `--`----'            '---'            
+    ****************** T R E A S U R E - G A M E ****************** 
+          
+          
+""", RESET))
+    type_print(YELLOW + "Welcome to " + BOLD + "THE LOST TREASURE QUEST" + RESET)
+    type_print("Legend says one ancient chest remains on the island. Many have searched. Will you claim it?\n")
+
+def play_game():
+    lives = 2
+    score = 0
+
+    title_screen()
+    slow_sleep(0.6)
+    type_print(MAGENTA + "Prologue: In the archipelago the rules are simple — be brave, be clever, and read your map." + RESET)
+    slow_sleep(0.8)
+
+    choice1 = input('\nYou stand at a fork in the jungle. Do you want to go "left" toward the Mangrove Bay or "right" toward the Narrow Path ? Type left/right: \n :').strip().lower()
+    if choice1 not in ("left", "right"):
+        type_print(RED + "You wandered in circles and lost your bearings. Game over." + RESET)
+        return
+
+    # Flavor text & engagement
+    if choice1 == "right":
+        type_print("You head to the Cliff Path — the wind sings of hidden coves. A pirate appears!")
+        bandit_roll = random.randint(1, 6)
+        if bandit_roll <= 3:
+            type_print(RED + EMOJI_OOPS + " The pirate snatches a scrap of your map! -1 point" + RESET)
+            score -= 1
+        else:
+            type_print(GREEN + "You outwit the pirate with a clever riddle and find a brass coin. +2 points" + RESET)
+            score += 2
+    else:
+        type_print("You slip through Mangrove Bay. Frogs croak like old sea-shanties...")
+
+    slow_sleep(0.8)
+    # sea/boat scene with a fun twist
+    choice2 = input('\nYou arrive at a foaming lagoon. An island rises in the mist. Type "wait" to hail the old skiff or "swim" to brave the surf: ').strip().lower()
+    if choice2 not in ("wait", "swim"):
+        type_print(RED + "Confused by the spray, you stumble and faint. Game over." + RESET)
+        return
+
+    if choice2 == "swim":
+        # chance of funny failure
+        swim_chance = random.random()
+        if swim_chance < 0.35:
+            type_print(RED + EMOJI_OOPS + " A whirlpool spins you out to sea. Game over." + RESET)
+            return
+        else:
+            type_print(GREEN + "You ride a friendly current and land ashore. +1 point" + RESET)
+            score += 1
+    else:
+        type_print("You hail an old fisherman in a creaky skiff. He tips his hat and ferries you across.")
+        score += 1
+
+    slow_sleep(0.7)
+    # island doors
+    type_print("\nOn the island stands an ancient hut with three entrances, each humming with secret energy.")
+    choice3 = input('Choose an entrance: "red" (marked with a skull), "blue" (carved with waves), or "yellow" (painted with sun glyphs): ').strip().lower()
+
+    if choice3 not in ("red", "blue", "yellow"):
+        type_print(RED + "The island feels offended and your map slips away. The treasure is gone. Game over." + RESET)
+        return
+
+    # random mini surprise before result
+    event_text, event_effect = surprise_event()
+    type_print(MAGENTA + "\n" + event_text + RESET)
+    if event_effect == "life":
+        lives += 1
+        type_print(GREEN + "Life +1! Lives: " + str(lives) + RESET)
+    elif isinstance(event_effect, int):
+        score += event_effect
+        if event_effect > 0:
+            type_print(GREEN + f"Score +{event_effect} -> {score}" + RESET)
+        elif event_effect < 0:
+            type_print(RED + f"Score {event_effect} -> {score}" + RESET)
+
+    slow_sleep(0.6)
+
+    # door outcomes — treasure-themed
+    if choice3 == "red":
+        type_print(YELLOW + "\nYou push the red entrance. Inside: a nest of slithering serpents guarding cursed coins." + RESET)
+        type_print(RED + EMOJI_OOPS + " The serpents hiss and you are chased out. -1 life." + RESET)
+        lives -= 1
+    elif choice3 == "yellow":
+        type_print("The yellow entrance opens into a dark vault labeled 'Empty Promises'. It's sparse and dusty.")
+        type_print(RED + "Your hopes droop. -1 score." + RESET)
+        score -= 1
+    else:  # blue
+        type_print(BOLD + "\nThe blue passage leads to a pedestal holding a weathered chest with a brass lock." + RESET)
+        slow_sleep(0.8)
+        type_print(GREEN + "It hums like destiny. The air smells of salt and old coins. " + EMOJI_TREASURE + RESET)
+        final_choice = input('Type "open" to unlock the chest, "share" to split its map, or "inspect" for traps: ').strip().lower()
+        if final_choice == "open":
+            type_print(GREEN + BOLD + "\nYou pry open the chest and uncover glittering treasure!" + RESET)
+            score += 5
+            type_print(GREEN + f"Hurray! You found the Lost Treasure! Score: {score} Lives: {lives} {EMOJI_TREASURE}" + RESET)
+            open_link = input("Celebrate with a sea shanty? Type 'yes' to play a tune (opens browser): ").strip().lower()
+            if open_link == "yes":
+                webbrowser.open("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+            return
+        elif final_choice == "share":
+            type_print("You split the map and distribute the treasure's legend. +2 score for generosity, but the chest remains half-open.")
+            score += 2
+            type_print(GREEN + f"You leave richer in friends. Score: {score}" + RESET)
+            return
+        else:
+            # inspect path: small puzzle
+            clue = random.choice(["key", "riddle", "glyph"])
+            type_print(f"You inspect and discover a tiny note: '{clue}'. It shimmers.")
+            if clue == "key":
+                type_print(GREEN + "It's a hidden keyfold — the chest yields a secret compartment! +3 score" + RESET)
+                score += 3
+                return
+            else:
+                type_print(RED + "While you inspect, a trap snaps shut and the chest seals away. Game over." + RESET)
+                return
+
+    # If player didn't win yet, evaluate lives/score
+    slow_sleep(0.5)
+    if lives <= 0:
+        type_print(RED + "\nYour courage ran out. You slump onto the sand. Game over." + RESET)
+    else:
+        type_print(MAGENTA + f"\nRound end. Score: {score} | Lives: {lives}" + RESET)
+        type_print("Play again to discover a different ending—the island keeps secrets each time.")
+
+if __name__ == "__main__":
+    play_game()
+import time
+import matplotlib.pyplot as plt  # Import the matplotlib library for plotting
