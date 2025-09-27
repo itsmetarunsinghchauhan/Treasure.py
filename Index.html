@@ -3,44 +3,330 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Treasure Game — Download & Run</title>
+  <title>The Lost Treasure Quest</title>
   <style>
-    body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:2rem;background:#fff;}
-    pre{background:#f6f8fa;padding:1rem;border:1px solid #e1e4e8;border-radius:6px;white-space:pre-wrap;overflow:auto;}
-    a.button{display:inline-block;margin:1rem 0;padding:.5rem .9rem;border-radius:6px;background:#0366d6;color:#fff;text-decoration:none;}
+    :root{--bg:#0f1724;--panel:#071022;--text:#e6eef6;--muted:#9fb4d3;--accent:#f7d154;}
+    body{margin:0;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial; background:linear-gradient(180deg,#021024 0%,#04152b 100%);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;}
+    .frame{width:900px;max-width:96vw;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;box-shadow:0 10px 30px rgba(2,6,23,0.6);padding:1rem;border:1px solid rgba(255,255,255,0.03);}
+    .screen{background:var(--panel);border-radius:10px;padding:1rem;min-height:420px;max-height:70vh;overflow:auto;box-shadow:inset 0 1px 0 rgba(255,255,255,0.02);}
+    .controls{margin-top:.9rem;display:flex;gap:.6rem;flex-wrap:wrap;}
+    .btn{background:#0b1220;border:1px solid rgba(255,255,255,0.04);padding:.55rem .9rem;border-radius:8px;color:var(--text);cursor:pointer;font-weight:600;}
+    .btn:disabled{opacity:.45;cursor:not-allowed}
+    .line{font-family:monospace, ui-monospace;white-space:pre-wrap;line-height:1.35;margin:0 0 .6rem}
+    .muted{color:var(--muted);font-size:.95rem}
+    .big-title{font-family:monospace;font-size:15px;color:var(--accent);margin-bottom:.7rem}
+    .status{margin-top:.6rem;font-size:.95rem;color:var(--muted)}
+    footer{margin-top:.8rem;color:var(--muted);font-size:.85rem}
+    .choices {display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem}
+    .small {padding:.35rem .6rem;border-radius:6px}
+    a.link {color:var(--accent);text-decoration:underline}
+    .center {text-align:center}
   </style>
 </head>
 <body>
-  <h1>Treasure Game (Python)</h1>
-  <p>GitHub Pages cannot run Python on the server. Download the script below and run it on your machine with <code>python3 game.py</code>.</p>
+  <div class="frame" role="main">
+    <div class="big-title">*** THE LOST TREASURE QUEST — Browser Edition ***</div>
+    <div id="screen" class="screen" aria-live="polite"></div>
 
-  <a class="button" href="game.py" download>Download game.py</a>
+    <div class="controls">
+      <div id="choices" class="choices"></div>
+      <button id="restart" class="btn" style="margin-left:auto">Restart</button>
+    </div>
 
-  <h2>Game source (preview)</h2>
-  <pre>
-<!-- Paste your Python code here exactly as in game.py -->
-import time
-import random
-import webbrowser
-import sys
+    <div class="status" id="status"></div>
+    <footer class="muted center">Converted from Python to browser JS — enjoy the island, Tarun-style exploration.</footer>
+  </div>
 
-# ---------- Config ----------
-TYPING_DELAY = 0.02
-EMOJI_TREASURE = "🪙"
-EMOJI_FIRE = "🔥"
-EMOJI_OOPS = "💥"
-# ANSI color helpers (works in most terminals)
-CYAN = "\033[96m"
-YELLOW = "\033[93m"
-GREEN = "\033[92m"
-MAGENTA = "\033[95m"
-RED = "\033[91m"
-RESET = "\033[0m"
-BOLD = "\033[1m"
+<script>
+/* Game converted to browser JS
+   - Uses on-screen buttons for choices (no blocking input)
+   - Typewriter effect for flavor
+*/
 
-# (rest of your script...)
-  </pre>
+const TYPING_DELAY = 18; // ms per char (feel free to tweak)
+const EMOJI_TREASURE = "🪙", EMOJI_OOPS = "💥";
+const screen = document.getElementById('screen');
+const choicesEl = document.getElementById('choices');
+const restartBtn = document.getElementById('restart');
+const statusEl = document.getElementById('status');
 
-  <p>If you want the game to run in a browser (no Python install), I can convert/port it to JavaScript or attempt a Pyodide/Brython version — that’s a different approach.</p>
+let lives = 2;
+let score = 0;
+let typingLocked = false;
+
+function appendLine(text = '', cls='line') {
+  const p = document.createElement('div');
+  p.className = cls;
+  p.textContent = text;
+  screen.appendChild(p);
+  screen.scrollTop = screen.scrollHeight;
+  return p;
+}
+
+function clearChoices() {
+  choicesEl.innerHTML = '';
+}
+
+function setStatus() {
+  statusEl.textContent = `Score: ${score}  |  Lives: ${lives}`;
+}
+
+function sleep(ms){ return new Promise(res => setTimeout(res, ms)); }
+
+async function typePrint(text, delay=TYPING_DELAY) {
+  typingLocked = true;
+  const p = appendLine('', 'line');
+  for (let ch of text) {
+    p.textContent += ch;
+    screen.scrollTop = screen.scrollHeight;
+    await sleep(delay);
+  }
+  typingLocked = false;
+  return p;
+}
+
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+function createChoice(label, value, onClick) {
+  const btn = document.createElement('button');
+  btn.className = 'btn small';
+  btn.textContent = label;
+  btn.onclick = () => { if(!typingLocked) onClick(value); };
+  choicesEl.appendChild(btn);
+  return btn;
+}
+
+function surpriseEvent() {
+  const events = [
+    ["A monkey grabs your map and runs—oh no! -1 score", -1],
+    ["You find a smudged map corner. Score +2!", +2],
+    ["A raccoon plays a trick and you lose a point. -1", -1],
+    ["You find a small cave and rest. +1 life", "life"],
+    ["You slip a little but it's OK. No change.", 0],
+  ];
+  return pick(events);
+}
+
+async function titleScreen() {
+  screen.innerHTML = '';
+  appendLine(`
+
+        ,-----,          
+      ,/   .\`|                                                                                 
+    ,\`   .'  :           ,---,               ,-.----.                                        
+  ;    ;     /          '  .' \\              \\    /  \\                   ,--,            ,--,:  : | 
+.'___,/    ,'          /  ;    '.            ;   :    \\                ,'_ /|         ,\`--.'\`|  ' : 
+|    :     |          :  :       \\           |   | .\\ :           .--. |  | :         |   :  :  | | 
+;    |.';  ;          :  |   /\\   \\          .   : |: |         ,'_ /| :  . |         :   |   \\ | : 
+\`----'  |  |          |  :  ' ;.   :         |   |  \\ :         |  ' | |  . .         |   : '  '; | 
+    '   :  ;          |  |  ;/  \\   \\        |   : .  /         |  | ' |  | |         '   ' ;.    ; 
+    |   |  '          '  :  | \\  \\ ,'        ;   | |  \\         :  | | :  ' ;         |   | | \\   | 
+    '   :  |          |  |  '  '--'          |   | ;\\  \\        |  ; ' |  | '         '   : |  ; .' 
+    ;   |.'           |  :  :                :   ' | \\.'        :  | : ;  ; |         |   | \`\`--'   
+    '---'             |  | ,'                :   : :-'          '  :  \`--'   \\        '   : |       
+                      \`--''                  |   |.'            :  ,      .-./        ;   |.'       
+                                             \`---'               \`--\`----'            '---'            
+    ****************** T R E A S U R E - G A M E ******************
+  `, 'line');
+  await typePrint("Welcome to THE LOST TREASURE QUEST");
+  await typePrint("Legend says one ancient chest remains on the island. Many have searched. Will you claim it?\n");
+}
+
+async function playGame() {
+  // initialize
+  lives = 2; score = 0;
+  setStatus();
+  await titleScreen();
+  await sleep(600);
+  await typePrint("Prologue: In the archipelago the rules are simple — be brave, be clever, and read your map.");
+  await sleep(500);
+
+  // choice1
+  await typePrint('\nYou stand at a fork in the jungle. Do you want to go "left" toward Mangrove Bay or "right" toward the Narrow Path?');
+  clearChoices();
+  return new Promise(async (resolve) => {
+    createChoice('Left', 'left', async () => {
+      await handleChoice1('left'); resolve();
+    });
+    createChoice('Right', 'right', async () => {
+      await handleChoice1('right'); resolve();
+    });
+  });
+}
+
+async function handleChoice1(choice1) {
+  clearChoices();
+  if (!["left","right"].includes(choice1)) {
+    await typePrint("You wandered in circles and lost your bearings. Game over.");
+    return endGame();
+  }
+  if (choice1 === 'right') {
+    await typePrint("You head to the Cliff Path — the wind sings of hidden coves. A pirate appears!");
+    const bandit_roll = Math.floor(Math.random()*6)+1;
+    if (bandit_roll <= 3) {
+      await typePrint(EMOJI_OOPS + " The pirate snatches a scrap of your map! -1 point");
+      score -= 1;
+    } else {
+      await typePrint("You outwit the pirate with a clever riddle and find a brass coin. +2 points");
+      score += 2;
+    }
+  } else {
+    await typePrint("You slip through Mangrove Bay. Frogs croak like old sea-shanties...");
+  }
+  setStatus();
+  await sleep(700);
+  // proceed to lagoon scene
+  await typePrint('\nYou arrive at a foaming lagoon. Type WAIT to hail the old skiff or SWIM to brave the surf.');
+  clearChoices();
+  createChoice('Wait (hail skiff)', 'wait', async () => { await handleChoice2('wait'); });
+  createChoice('Swim', 'swim', async () => { await handleChoice2('swim'); });
+}
+
+async function handleChoice2(choice2) {
+  clearChoices();
+  if (!["wait","swim"].includes(choice2)) {
+    await typePrint("Confused by the spray, you stumble and faint. Game over.");
+    return endGame();
+  }
+  if (choice2 === 'swim') {
+    const swim_chance = Math.random();
+    if (swim_chance < 0.35) {
+      await typePrint(EMOJI_OOPS + " A whirlpool spins you out to sea. Game over.");
+      return endGame();
+    } else {
+      await typePrint("You ride a friendly current and land ashore. +1 point");
+      score += 1;
+    }
+  } else {
+    await typePrint("You hail an old fisherman in a creaky skiff. He tips his hat and ferries you across.");
+    score += 1;
+  }
+  setStatus();
+  await sleep(600);
+
+  // island doors
+  await typePrint("\nOn the island stands an ancient hut with three entrances: red (skull), blue (waves), yellow (sun). Choose one.");
+  clearChoices();
+  createChoice('Red (skull)', 'red', async () => { await handleChoice3('red'); });
+  createChoice('Blue (waves)', 'blue', async () => { await handleChoice3('blue'); });
+  createChoice('Yellow (sun)', 'yellow', async () => { await handleChoice3('yellow'); });
+}
+
+async function handleChoice3(choice3) {
+  clearChoices();
+  if (!["red","blue","yellow"].includes(choice3)) {
+    await typePrint("The island feels offended and your map slips away. The treasure is gone. Game over.");
+    return endGame();
+  }
+
+  // surprise event
+  const [event_text, event_effect] = surpriseEvent();
+  await typePrint("\n" + event_text);
+  if (event_effect === "life") { lives +=1; await typePrint("Life +1! Lives: " + lives); }
+  else if (typeof event_effect === 'number') {
+    score += event_effect;
+    if (event_effect > 0) await typePrint(`Score +${event_effect} -> ${score}`);
+    else if (event_effect < 0) await typePrint(`Score ${event_effect} -> ${score}`);
+  }
+  setStatus();
+  await sleep(600);
+
+  if (choice3 === 'red') {
+    await typePrint("You push the red entrance. Inside: a nest of slithering serpents guarding cursed coins.");
+    await typePrint(EMOJI_OOPS + " The serpents hiss and you are chased out. -1 life.");
+    lives -= 1;
+    setStatus();
+    return endGame();
+  } else if (choice3 === 'yellow') {
+    await typePrint("The yellow entrance opens into a dark vault labeled 'Empty Promises'. It's sparse and dusty.");
+    await typePrint("Your hopes droop. -1 score.");
+    score -= 1;
+    setStatus();
+    return endGame();
+  } else { // blue path - main flow
+    await typePrint("\nThe blue passage leads to a pedestal holding a weathered chest with a brass lock.");
+    await sleep(700);
+    await typePrint("It hums like destiny. The air smells of salt and old coins. " + EMOJI_TREASURE);
+    await typePrint('Type OPEN to unlock the chest, SHARE to split its map, or INSPECT for traps.');
+    clearChoices();
+    createChoice('Open', 'open', async () => { await finalOpen('open'); });
+    createChoice('Share', 'share', async () => { await finalOpen('share'); });
+    createChoice('Inspect', 'inspect', async () => { await finalOpen('inspect'); });
+  }
+}
+
+async function finalOpen(final_choice) {
+  clearChoices();
+  if (final_choice === 'open') {
+    await typePrint("\nYou pry open the chest and uncover glittering treasure!");
+    score += 5;
+    setStatus();
+    await typePrint(`Hurray! You found the Lost Treasure! Score: ${score} Lives: ${lives} ${EMOJI_TREASURE}`);
+    await typePrint("Celebrate with a sea shanty? Click YES to play a tune (opens new tab).");
+    clearChoices();
+    createChoice('Yes — play tune', 'yes', async () => {
+      window.open("https://www.youtube.com/watch?v=dQw4w9WgXcQ", '_blank');
+      await typePrint("A rickety shanty plays while waves applaud. 🎶");
+      setStatus();
+      return endGame();
+    });
+    createChoice('No thanks', 'no', async () => {
+      await typePrint("You hum quietly and tuck the coins away. Well done, voyager.");
+      return endGame();
+    });
+  } else if (final_choice === 'share') {
+    await typePrint("You split the map and distribute the treasure's legend. +2 score for generosity, but the chest remains half-open.");
+    score += 2;
+    setStatus();
+    return endGame();
+  } else {
+    // inspect small puzzle
+    const clue = pick(["key","riddle","glyph"]);
+    await typePrint(`You inspect and discover a tiny note: '${clue}'. It shimmers.`);
+    if (clue === 'key') {
+      await typePrint("It's a hidden keyfold — the chest yields a secret compartment! +3 score");
+      score += 3;
+      setStatus();
+      return endGame();
+    } else {
+      await typePrint("While you inspect, a trap snaps shut and the chest seals away. Game over.");
+      return endGame();
+    }
+  }
+}
+
+async function endGame() {
+  setStatus();
+  clearChoices();
+  if (lives <= 0) {
+    await typePrint("\nYour courage ran out. You slump onto the sand. Game over.");
+  } else {
+    await typePrint(`\nRound end. Score: ${score} | Lives: ${lives}`);
+    await typePrint("Play again to discover a different ending—the island keeps secrets each time.");
+  }
+  // offer a restart button
+  createChoice('Play again', 'restart', async () => {
+    clearChoices();
+    await run();
+  });
+}
+
+// central runner to allow restarting cleanly
+async function run() {
+  clearChoices();
+  screen.innerHTML = '';
+  setStatus();
+  await playGame();
+}
+
+restartBtn.onclick = async () => {
+  if (!typingLocked) {
+    await run();
+  }
+};
+
+// initial launch
+run();
+</script>
 </body>
 </html>
