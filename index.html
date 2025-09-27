@@ -5,15 +5,24 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Treasure Game</title>
   <style>
-    body { background:black; color:white; font-family:monospace; padding:1rem; }
-    #output { white-space:pre-wrap; margin-bottom:1rem; }
-    #inputArea { display:none; margin-top:0.5rem; }
-    input { background:#111; color:white; border:1px solid #444; padding:0.3rem; width:200px; }
-    button { background:#222; color:white; border:1px solid #555; padding:0.4rem 0.8rem; cursor:pointer; }
+    /* Simple black theme */
+    html,body{height:100%;margin:0;background:#000;color:#fff;font-family:monospace;}
+    .wrap{padding:18px;max-width:1000px;margin:0 auto;}
+    pre.ascii{white-space:pre; /* preserve all spaces/newlines */ 
+             font-family:monospace; font-size:13px; line-height:1;
+             color:#fff; margin:0 0 12px 0;}
+    #output{white-space:pre-wrap; font-family:monospace; margin:12px 0; color:#ddd;}
+    input, button{font-family:monospace; font-size:13px; background:#111; color:#fff; border:1px solid #333; padding:6px;}
+    #inputArea{display:none; margin-top:8px;}
+    button#start{display:inline-block;margin-top:8px;}
+    a.link{color:#7fdfff}
   </style>
 </head>
 <body>
-  <h5>        ,----,                                                                                      
+  <div class="wrap">
+    <!-- Use <pre> to keep ASCII exactly as typed -->
+    <pre class="ascii">
+,----,                                                                                      
       ,/   .`|                                                                                 ,--. 
     ,`   .'  :           ,---,               ,-.----.                                        ,--.'| 
   ;    ;     /          '  .' \              \    /  \                   ,--,            ,--,:  : | 
@@ -28,82 +37,89 @@
     '---'             |  | ,'                :   : :-'          '  :  `--'   \        '   : |       
                       `--''                  |   |.'            :  ,      .-./        ;   |.'       
                                              `---'               `--`----'            '---'       
-  Wecome to Treasure Game</h5>
-  <div id="output"></div>
-  <div id="inputArea">
-    <input id="userInput" placeholder="Type here..." />
-    <button onclick="submitInput()">Enter</button>
+    Welcome to the Treasure Game
+    </pre>
+
+    <!-- Minimal UI -->
+    <div id="output"></div>
+
+    <div id="inputArea">
+      <input id="userInput" placeholder='Type (e.g., "left")' />
+      <button onclick="submitInput()">Enter</button>
+    </div>
+
+    <button id="start" onclick="startGame()">Run Game</button>
   </div>
-  <button id="startBtn" onclick="startGame()">Run Game</button>
 
 <script>
-let lives, score;
-let step = 0;
+/* Very small game logic (same simple flow as before).
+   Keeps the UI minimal: press Run Game, then type answers. */
 const output = document.getElementById('output');
 const inputArea = document.getElementById('inputArea');
 const userInput = document.getElementById('userInput');
-const startBtn = document.getElementById('startBtn');
+const startBtn = document.getElementById('start');
 
-function printLine(text="") {
-  output.textContent += text + "\n";
-  output.scrollTop = output.scrollHeight;
-}
+let lives=2, score=0, step=0;
 
-function startGame() {
-  output.textContent = "";
-  startBtn.style.display = "none";
-  inputArea.style.display = "block";
+function printLine(t=''){ output.textContent += t + '\n'; window.scrollTo(0,document.body.scrollHeight); }
+
+function startGame(){
+  output.textContent = '';
+  startBtn.style.display = 'none';
+  inputArea.style.display = 'block';
+  userInput.focus();
   lives = 2; score = 0; step = 1;
-  printLine("Welcome to THE LOST TREASURE QUEST");
-  printLine("You have 2 lives. Type carefully!\n");
+  printLine('Welcome to THE LOST TREASURE QUEST');
+  printLine('You have 2 lives. Type carefully!');
+  printLine('');
   printLine('Do you go "left" (Mangrove Bay) or "right" (Narrow Path)?');
 }
 
-function submitInput() {
-  const val = userInput.value.trim().toLowerCase();
-  userInput.value = "";
-  if(!val) return;
-  handleStep(val);
+function submitInput(){
+  const v = userInput.value.trim().toLowerCase();
+  userInput.value = '';
+  if(!v) return;
+  handleStep(v);
 }
 
-function handleStep(val) {
-  if(step===1){
-    if(val==="left"){ printLine("You slip through Mangrove Bay. Frogs croak..."); }
-    else if(val==="right"){ printLine("You meet a pirate! He steals -1 point."); score--; }
-    else { return gameOver("Lost in jungle."); }
-    step=2; printLine('\nLagoon ahead. Type "wait" for boat or "swim" to swim.'); return;
-  }
-  if(step===2){
-    if(val==="swim"){ 
-      if(Math.random()<0.5) return gameOver("A whirlpool got you!");
-      else { printLine("You swim safely. +1 point."); score++; }
-    } else if(val==="wait"){ printLine("Fisherman ferries you. +1 point."); score++; }
-    else return gameOver("You hesitated and drowned.");
-    step=3; printLine('\nA hut has 3 doors: "red", "blue", "yellow".'); return;
-  }
-  if(step===3){
-    if(val==="red"){ lives--; return gameOver("Serpents attacked! -1 life."); }
-    if(val==="yellow"){ score--; return gameOver("Empty vault. -1 score."); }
-    if(val==="blue"){ step=4; printLine("You find a chest! Type 'open', 'share' or 'inspect'."); return; }
-    return gameOver("The island rejects you.");
-  }
-  if(step===4){
-    if(val==="open"){ score+=5; printLine("You found the TREASURE! Score: "+score); return endGame(); }
-    if(val==="share"){ score+=2; printLine("You shared the map. Score: "+score); return endGame(); }
-    if(val==="inspect"){ printLine("Trap snapped! Chest sealed."); return gameOver(); }
-  }
+function endGame(){
+  printLine('');
+  printLine('Final Score: ' + score + ' | Lives: ' + lives);
+  inputArea.style.display = 'none';
+  startBtn.style.display = 'inline-block';
+  startBtn.textContent = 'Play Again';
 }
 
-function gameOver(msg="Game Over.") {
-  printLine("\n"+msg);
-  printLine("Final Score: "+score+" | Lives: "+lives);
+function gameOver(msg='Game Over'){
+  printLine('');
+  printLine(msg);
   endGame();
 }
 
-function endGame() {
-  inputArea.style.display="none";
-  startBtn.style.display="block";
-  startBtn.textContent="Play Again";
+function handleStep(val){
+  if(step===1){
+    if(val==='left'){ printLine('You slip through Mangrove Bay. Frogs croak...'); }
+    else if(val==='right'){ printLine('You meet a pirate! He steals -1 point.'); score--; }
+    else return gameOver('Lost in jungle.');
+    step=2; printLine(''); printLine('Lagoon ahead. Type "wait" or "swim".'); return;
+  }
+  if(step===2){
+    if(val==='swim'){ if(Math.random()<0.5) return gameOver('A whirlpool got you!'); else { printLine('You swim safely. +1 point.'); score++; } }
+    else if(val==='wait'){ printLine('Fisherman ferries you. +1 point.'); score++; }
+    else return gameOver('You hesitated and drowned.');
+    step=3; printLine(''); printLine('A hut has 3 doors: "red", "blue", "yellow".'); return;
+  }
+  if(step===3){
+    if(val==='red'){ lives--; return gameOver('Serpents attacked! -1 life.'); }
+    if(val==='yellow'){ score--; return gameOver('Empty vault. -1 score.'); }
+    if(val==='blue'){ step=4; printLine('You find a chest! Type "open", "share" or "inspect".'); return; }
+    return gameOver('The island rejects you.');
+  }
+  if(step===4){
+    if(val==='open'){ score+=5; printLine('You found the TREASURE! Score: '+score); return endGame(); }
+    if(val==='share'){ score+=2; printLine('You shared the map. Score: '+score); return endGame(); }
+    if(val==='inspect'){ printLine('Trap snapped! Chest sealed.'); return gameOver(); }
+  }
 }
 </script>
 </body>
