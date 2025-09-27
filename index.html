@@ -162,7 +162,7 @@ function handleStep(val, rawEntry){
   if(step===3){
     if(val==='red'){ lives--; return gameOver('Serpents attacked! -1 life.'); }
     if(val==='yellow'){ score--; return gameOver('Empty vault. -1 score.'); }
-    if(val==='blue'){ step=4; printLine('You find a chest!'); 
+    if(val==='blue'){ step=4; printLine('****Congratulation**** - You find a chest!'); 
         // Now prompt with special instruction: allow Enter or "open" to reveal chest contents
         printLine('Type "open", to check what it inside the box - are you ready ? ".');
         awaitingOpen = true;
