@@ -76,7 +76,7 @@ function startGame(){
   printLine('Welcome to THE LOST TREASURE QUEST');
   printLine('You have 2 lives. Type carefully!');
   printLine('');
-  printLine('Do you go "left" (Mangrove Bay) or "right" (Narrow Path)?');
+  printLine('Do you want to go left into the Wild Jungle or right onto the Haunted Path?');
 }
 
 function submitInput(){
@@ -148,16 +148,16 @@ function handleStep(val, rawEntry){
 
   // Normal game flow:
   if(step===1){
-    if(val==='left'){ printLine('You slip through Mangrove Bay. Frogs croak...'); }
+    if(val==='left'){ printLine('The path twists and turns… oops, a creepy laugh echoes behind you. Who’s there?...'); }
     else if(val==='right'){ printLine('You meet a pirate! He steals -1 point.'); score--; }
     else return gameOver('Lost in jungle.');
-    step=2; printLine(''); printLine('Lagoon ahead. Type "wait" or "swim".'); return;
+    step=2; printLine(''); printLine('You find a cracked, wobbly bridge… each plank groans under your feet. Do you ‘wait’ or ‘cross’ quickly?".'); return;
   }
   if(step===2){
-    if(val==='swim'){ if(Math.random()<0.5) return gameOver('A whirlpool got you!'); else { printLine('You swim safely. +1 point.'); score++; } }
+    if(val==='corss'){ if(Math.random()<0.5) return gameOver('A whirlpool got you!'); else { printLine('You swim safely. +1 point.'); score++; } }
     else if(val==='wait'){ printLine('Fisherman ferries you. +1 point.'); score++; }
-    else return gameOver('You hesitated and drowned.');
-    step=3; printLine(''); printLine('A hut has 3 doors: "red", "blue", "yellow".'); return;
+    else return gameOver('The bridge collapses beneath you—oops, you tumble into a pit of snakes! Game Over.');
+    step=3; printLine(''); printLine('You find an old hut in the jungle… inside are 3 creepy doors: ‘red’, ‘blue’, or ‘yellow’. Which one?".'); return;
   }
   if(step===3){
     if(val==='red'){ lives--; return gameOver('Serpents attacked! -1 life.'); }
